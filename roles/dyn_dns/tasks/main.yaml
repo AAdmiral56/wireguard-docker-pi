@@ -1,0 +1,45 @@
+- name: Create Grafana directory
+  become: yes
+  file:
+    name: /opt/dnsupdater/
+    state: directory
+    owner: "472"
+    group: "472"
+    recurse: true
+    
+- name: DDNS Updater Config
+  become: yes
+  template:
+    src: dnsupdater.py.j2
+    dest: /opt/dnsupdater/dnsupdater.py
+    owner: root
+    group: root
+    
+- name: Insert Service File
+  become: yes
+  template:
+    src: dnsupdater.service.j2
+    dest: /etc/systemd/system/dnsupdater.service
+    owner: root
+    group: root
+    
+- name: Enable Service For DDNS
+  become: yes
+  systemd:
+    name: dnsupdater
+    enabled: yes
+    masked: no
+
+- name: Systemd Daemon Reload
+  become: yes
+  systemd:
+    daemon_reload: yes
+    
+- name: Run DDNS Service
+  become: yes
+  systemd:
+    state: started
+    name: dnsupdater
+    
+
+

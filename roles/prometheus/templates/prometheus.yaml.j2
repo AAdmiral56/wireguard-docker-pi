@@ -1,0 +1,14 @@
+#Change of scrape intervals for Lab 7 - Grafana
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 30s
+
+#1st job for Lab 6 - Prometheus
+
+scrape_configs:
+
+  - job_name: linux
+    static_configs:
+      - targets: ['localhost:9090']
+      - targets: ['localhost:9100']

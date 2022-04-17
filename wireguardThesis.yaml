@@ -1,0 +1,39 @@
+---
+  - name: Wireguard Installation
+    hosts: hetzserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - wireguard
+      
+  - name: DDNS Installation
+    hosts: hetzserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - dyn_dns
+      
+  - name: Grafana Installation
+    hosts: hetzserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - grafana_docker
+      
+  - name: Prometheus Installation
+    hosts: hetzserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - prometheus
+      
+  - name: Node Exporter Installation
+    hosts: hetzserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - prometheus

@@ -1,0 +1,191 @@
+---   
+- name: Turn on IPv4 Forwarding
+  become: yes
+  sysctl:
+   name: net.ipv4.ip_forward
+   value: 1
+   state: present
+   reload: yes
+   
+- name: Install WG
+  become: yes
+  apt:
+    name: wireguard
+    state: present   
+    
+- name: Install Docker
+  become: yes
+  apt:
+    name:
+      - python3-docker
+      - docker.io
+    state: latest
+
+- name: Check if wg0.conf already exists
+  become: yes
+  stat:
+    path: /etc/wireguard/wg0.conf
+  register: wg0_conf
+
+- name: Check if wg0-mobile.conf already exists
+  become: yes
+  stat:
+    path: /etc/wireguard/wg0-mobile.conf
+  register: wg0_mobile_conf
+    
+- name: Execute Handlers 
+  meta: flush_handlers
+
+- name: Sleep for 10 seconds
+  wait_for:
+    timeout: 10
+
+- name: Start Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
+    
+- name: Add user
+  become: yes
+  user:
+    name: pi
+    shell: /bin/bash
+    groups: docker
+    state: present
+    remove: yes
+    
+- name: Create Directory For Wireguard Docker
+  become: yes
+  file:
+    name: /etc/wireguard
+    owner: root
+    group: root
+    state: directory
+    recurse: true 
+
+- name: Generate Server Keypair
+  become: yes
+  shell: wg genkey | tee /etc/wireguard/server_private_key | wg pubkey > /etc/wireguard/server_public_key
+  register: server_keys
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+
+- name: Generate Client Keypair
+  become: yes
+  shell: wg genkey | tee /etc/wireguard/client_private_key | wg pubkey > /etc/wireguard/client_public_key
+  register: client_keys
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+
+- name: Load Server Private Key
+  become: yes
+  shell: cat /etc/wireguard/server_private_key
+  register: server_private_key
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+  
+- name: Load Server Public Key
+  become: yes
+  shell: cat /etc/wireguard/server_public_key
+  register: server_public_key
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+  
+- name: Load Client Private Key
+  become: yes
+  shell: cat /etc/wireguard/client_private_key
+  register: client_private_key
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+  
+- name: Load Client Public Key
+  become: yes
+  shell: cat /etc/wireguard/client_public_key
+  register: client_public_key
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+
+#- name: Public IP
+#  uri: 
+#   url: "https://ipinfo.io/ip"
+#    remote_src: yes
+#    return_content: yes
+#  register: vpnnode_pubip
+    
+- name: Server Interface Config
+  become: yes
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+  when: wg0_conf is not defined or wg0_conf.stat.exists == false
+
+- name: Client Interface Config
+  become: yes
+  template:
+    src: wg0-mobile.conf.j2
+    dest: /etc/wireguard/wg0-mobile.conf
+  when: wg0_mobile_conf is not defined or wg0_mobile_conf.stat.exists == false
+      
+- name: Delete Old Dockerfile
+  become: yes
+  file:
+    path: /etc/wireguard/Dockerfile
+    state: absent
+     
+- name: Copy Dockerfile
+  become: yes
+  template:
+    src: Dockerfile
+    dest: /etc/wireguard/Dockerfile
+    owner: root
+    group: root
+    mode: '750'
+        
+- name: Remove Old Container
+  docker_container:
+    name: wireguard
+    state: absent
+    
+- name: Remove Old Image
+  become: yes
+  docker_image:
+    name: wireguard:latest
+    state: absent
+            
+- name: Build Wireguard Docker
+  become: yes
+  docker_image:
+    name: wireguard:latest
+    build:
+      pull: yes
+      path: /etc/wireguard/
+    state: present
+    source: build
+    
+- name: yep
+  become: yes
+  shell: docker run -d --name=wireguard --cap-add=NET_ADMIN --cap-add=SYS_MODULE -e PUID=1000 -e PGID=1000 -e TZ=Europe/Tallinn -e SERVERURL=westernwheatley.com `#optional` \-e SERVERPORT=51820 `#optional` -e PEERS=2 `#optional` -e PEERDNS=auto `#optional` -e INTERNAL_SUBNET=10.200.200.0 `#optional` -e ALLOWEDIPS=0.0.0.0/0 `#optional` -p 51820:51820/udp -v /etc/wireguard:/etc/wireguard -v /lib/modules:/lib/modules --sysctl="net.ipv4.conf.all.src_valid_mark=1" --restart unless-stopped lscr.io/linuxserver/wireguard
+#- name: Setup Wireguard Container 
+#  become: yes
+#  docker_container:
+#    name: wireguard
+#    image: wireguard:latest
+#    state: started
+#    capabilities:
+#      - "NET_ADMIN"
+#      - "SYS_MODULE"
+#    env:
+#      PUID: "1600"
+#      PGID: "1000"
+#      SERVERURL: "westernwheatley.com"
+#      TZ: "Europe/Tallinn" # domain optional, public IP is required at least
+#      SERVERPORT: "51820"
+#      PEERS: "2"
+#      PEERDNS: "auto"
+#    sysctls:
+#      net.ipv4.conf.all.src_valid_mark: 1
+#    tty: true
+#    ports:
+#      - "51820:51820"
+#      - "8822:22"
+#    volumes:
+#      - /etc/wireguard:/etc/wireguard
+#      - /lib/modules:/lib/modules
+      
+#- name: Turn On VPN Interface
+#  shell: docker exec -it wireguard bash -c 'wg-quick up wg0'

@@ -1,0 +1,39 @@
+---
+  - name: Wireguard Installation
+    hosts: vpnserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - wireguard
+      
+  - name: DDNS Installation
+    hosts: vpnserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - dyn_dns
+      
+  - name: Grafana Installation
+    hosts: vpnserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - grafana_docker
+      
+  - name: Prometheus Installation
+    hosts: vpnserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - apt_update
+      - prometheus
+      
+  - name: Node Exporter Installation
+    hosts: vpnserver
+    remote_user: root
+    gather_facts: no
+    roles:
+      - prometheus

@@ -1,0 +1,1 @@
+$ARGS="--web.external-url=http://vm1.{{ domain }}:2880/prometheus"

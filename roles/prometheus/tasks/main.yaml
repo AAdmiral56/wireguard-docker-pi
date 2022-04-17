@@ -1,0 +1,62 @@
+---
+- name: Create Prometheus directory
+  become: yes
+  file:
+    name: /opt/prometheus
+    state: directory
+    owner: root
+    group: root
+    recurse: true
+    
+#- name: Configure Prometheus' web path
+#  template:
+#    src: prometheus.service.j2
+#    dest: /etc/systemd/system/prometheus.service
+#  notify: Restart Prometheus 
+
+- name: Configure Prometheus
+  become: yes
+  template:
+    src: prometheus.yaml.j2
+    dest: /opt/prometheus/prometheus.yml
+
+- name: Configure Prometheus
+  become: yes
+  template:
+    src: Dockerfile
+    dest: /opt/prometheus/Dockerfile
+    
+- name: Remove Old Container
+  become: yes
+  docker_container:
+    name: prometheus
+    state: absent
+    
+- name: Remove Old Image
+  become: yes
+  docker_image:
+    name: prometheus:latest
+    state: absent
+            
+- name: Build Prometheus Docker
+  become: yes
+  docker_image:
+    name: prometheus:latest
+    build:
+      pull: yes
+      path: /opt/prometheus/
+    state: present
+    source: build
+    
+- name: Setup Prometheus container
+  become: yes
+  docker_container:
+    name: prometheus
+    image: prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - /opt/prometheus/:/etc/prometheus/
+    restart_policy: always
+    
+

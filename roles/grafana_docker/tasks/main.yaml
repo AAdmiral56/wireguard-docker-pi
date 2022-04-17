@@ -1,0 +1,34 @@
+---
+- name: Create Grafana directory
+  become: yes
+  file:
+    name: /opt/grafana
+    state: directory
+    owner: "472"
+    group: "472"
+    recurse: true
+    
+- name: Install required tools for Grafana installation
+  apt:
+    name: apt-transport-https
+    state: latest
+ 
+- name: Reconfigure Grafana
+  become: yes
+  template:
+    src: grafana.ini.j2
+    dest: /opt/grafana/grafana.ini
+
+- name: Setup Grafana container
+  become: yes
+  docker_container:
+    name: grafana
+    image: grafana/grafana-enterprise
+    env:
+      GF_SERVER_ROOT_URL: http://localhost:3000/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - /opt/grafana:/var/lib/grafana/
+    restart_policy: always
